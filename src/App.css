@@ -1,0 +1,59 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+body {
+    background-color: #f0f2f5; 
+    font-family: 'Poppins', sans-serif;
+}
+
+.inventory-system {
+    padding-bottom: 2rem;
+}
+
+
+.rfid-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.rfid-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1) !important;
+}
+
+.rfid-card .btn-primary {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    border: none;
+    font-weight: 500;
+}
+
+.scan-result {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
+.action-card-manual {
+    background-color: #f8f9fa;
+    border: 1px dashed #ccc;
+}
+
+
+.inventory-table th {
+    font-weight: 600;
+}
+
+.inventory-table tbody tr {
+    transition: background-color 0.3s ease;
+}
+
+
+.highlight-row {
+    background-color: #d1ecf1 !important; 
+    font-weight: bold;
+}
