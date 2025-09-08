@@ -31,6 +31,11 @@ export default function Login({
   const [error, setError] = useState("");
   const [remember, setRemember] = useState(true);
 
+  const API = process.env.REACT_APP_API_URL;
+
+  console.log(API);
+
+
   const navigate = useNavigate();
 
   const canSubmit = useMemo(() => {
@@ -45,7 +50,7 @@ export default function Login({
     setLoading(true);
     setError("");
     axios
-      .post("http://localhost:5000/users/login", { username: user, password: password })
+      .post(`${API}/users/login`, { username: user, password: password })
       .then((response) => {
         localStorage.setItem('accessToken', response.data.data);
         navigate('/home');

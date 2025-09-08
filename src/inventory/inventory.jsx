@@ -60,7 +60,9 @@ const initialInventory = [
 ];
 
 function App() {
-  const [inventory, setInventory] = useState(initialInventory);
+  const API = process.env.REACT_APP_API_URL;
+
+  const [inventory, setInventory] = useState([]);
   const [scanState, setScanState] = useState({ status: "idle", product: null });
   const [operation, setOperation] = useState("entrada");
   const [showToast, setShowToast] = useState(false);
@@ -95,7 +97,7 @@ function App() {
 
   const handleGetCategories = () => {
     axios
-      .get("http://localhost:5000/products/get-products")
+      .get(`${API}/products/get-products`)
       .then((response) => {
         console.log(response.data.data);
         setProducts(response.data.data);
@@ -119,11 +121,11 @@ function App() {
 
   const handleProductMovement = (uid, movementType) => {
     axios
-      .post("http://localhost:5000/products/create-item", {
+      .post(`${API}/products/move-item`, {
         uid: uid,
         movementType: movementType,
         locationId: user.location_id,
-        userId: user.user_id
+        userId: user.user_id,
       })
       .then((response) => {
         const item = response.data.data;
@@ -131,6 +133,7 @@ function App() {
         setItem(item);
 
         if (item) {
+          handleGetInventory(user.location_id);
           setToastInfo({
             message: `Movimiento confirmado: ${item.tag.product_quantity} x ${
               item.product.product_name
@@ -155,6 +158,23 @@ function App() {
       });
   };
 
+  const handleGetInventory = (locationId) => {
+    axios
+      .post(`${API}/products/get-inventory`, {
+        locationId: locationId,
+      })
+      .then((response) => {
+        console.log("inventario", response.data.data);
+        setInventory(response.data.data);
+      })
+      .catch((error) => {
+        setToastInfo({
+          message: error.response.data.details,
+          variant: "danger",
+        });
+      });
+  };
+
   const getStockBadge = (quantity) => {
     if (quantity > 50) return <Badge bg="success">Alto</Badge>;
     if (quantity > 10) return <Badge bg="warning">Medio</Badge>;
@@ -166,6 +186,8 @@ function App() {
     const decoded = jwtDecode(accessToken);
 
     setUser(decoded);
+
+    handleGetInventory(decoded.location_id);
 
     handleGetCategories();
   }, []);
@@ -198,6 +220,13 @@ function App() {
 
       <Container fluid>
         <Row>
+          <Card className="shadow-lg border-light m-2">
+            <Card.Header as="h5" className="bg-light">
+              {user?.location}
+            </Card.Header>
+          </Card>
+        </Row>
+        <Row>
           <Pn532Widget product={item} onScan={handleTagScan} />
 
           <Col lg={8}>
@@ -223,23 +252,25 @@ function App() {
                   <tbody>
                     {inventory.map((item) => (
                       <tr
-                        key={item.id}
+                        key={item.product_id}
                         className={
-                          scanState.product?.id === item.id
+                          scanState.product?.product_id === item.product_id
                             ? "highlight-row"
                             : ""
                         }
                       >
                         <td>
-                          <Badge bg="secondary">{item.id}</Badge>
+                          <Badge bg="secondary">{item.sku}</Badge>
                         </td>
                         <td>
-                          <strong>{item.name}</strong>
+                          <strong>{item.product_name}</strong>
                         </td>
                         <td>{item.category}</td>
-                        <td className="text-center fs-5">{item.quantity}</td>
+                        <td className="text-center fs-5">
+                          {item.in_stock_qty}
+                        </td>
                         <td className="text-center">
-                          {getStockBadge(item.quantity)}
+                          {getStockBadge(item.in_stock_qty)}
                         </td>
                       </tr>
                     ))}

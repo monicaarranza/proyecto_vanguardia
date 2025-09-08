@@ -63,7 +63,7 @@ function BatchTypes() {
 
   const handleGetCategories = () => {
     axios
-      .get("http://localhost:5000/categories/get-categories")
+      .get(`${process.env.REACT_APP_API_URL}/categories/get-categories`)
       .then((response) => {
         setCategories(response.data.data);
       })
@@ -82,7 +82,7 @@ function BatchTypes() {
     };
 
     axios
-      .post("http://localhost:5000/products/create-batch-type", newTupe)
+      .post("${process.env.REACT_APP_API_URL}/products/create-batch-type", newTupe)
       .then((response) => {
         setDetails(response.data.details);
         setVariant("success");
@@ -100,7 +100,7 @@ function BatchTypes() {
 
   const handleGetProducts = () => {
     axios
-      .get("http://localhost:5000/products/get-products")
+      .get("${process.env.REACT_APP_API_URL}/products/get-products")
       .then((response) => {
         setProducts(response.data.data);
       })
@@ -113,7 +113,7 @@ function BatchTypes() {
 
   const handleGetBatchTypes = () => {
     axios
-      .get("http://localhost:5000/products/get-batch-types")
+      .get("${process.env.REACT_APP_API_URL}/products/get-batch-types")
       .then((response) => {
         setBatchTypes(response.data.data);
       })

@@ -7,7 +7,7 @@ import { BoxArrowRight, Wifi } from "react-bootstrap-icons";
 
 export default function Pn532Widget({
   onScan,
-  baseUrl = "http://localhost:5000",
+  baseUrl = process.env.REACT_APP_API_URL,
   product,
 }) {
   const { uid, last, connected, error } = usePn532Hybrid(
@@ -15,7 +15,9 @@ export default function Pn532Widget({
     { baseUrl }
   );
 
-  //console.log(product);
+  const isPresent = last?.present === true;
+  const showUid = isPresent ? (last?.uid || uid) : null;
+  const readerName = last?.reader || "—";
 
   return (
     <Col lg={4}>
@@ -31,11 +33,24 @@ export default function Pn532Widget({
           <hr />
 
           <div style={{ fontFamily: "system-ui", padding: 12 }}>
-            <p>Estado: {connected ? "Conectado" : "Reconectando..."}</p>
+            <p>
+              Estado:{" "}
+              <strong style={{ color: connected ? "#198754" : "#fd7e14" }}>
+                {connected ? "Conectado" : "Reconectando…"}
+              </strong>
+            </p>
+            <p className="mb-1">Lector: {readerName}</p>
+            <p className="mb-1">
+              Presencia: {isPresent ? "tarjeta detectada" : "—"}
+            </p>
+            <p className="mb-0">
+              UID: <code>{showUid ?? "—"}</code>
+            </p>
             {error && (
-              <p style={{ color: "crimson" }}>Error: {String(error)}</p>
+              <p className="mt-2" style={{ color: "crimson" }}>
+                Error: {String(error)}
+              </p>
             )}
-            <p>UID: {product?.tag?.uid || "—"}</p>
           </div>
 
           {product && (
@@ -67,10 +82,10 @@ export default function Pn532Widget({
               </div>
               <div>
                 <p className="mb-2">
-                  <strong>Tipo de Lote:</strong>
+                  <strong>Cantidad:</strong>
                 </p>
                 <h5 className="text-success">
-                  {product?.batchType?.batch_type_name}
+                  {product?.tag?.product_quantity}
                 </h5>
               </div>
             </div>

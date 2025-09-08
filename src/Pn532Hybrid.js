@@ -23,13 +23,20 @@ export function usePn532Hybrid(
     const url = (p) => baseUrl ? `${baseUrl}${p}` : p;
 
     const normalize = (data, source = "unknown") => {
-        // Asegúrate que el Arduino mande { reader: "in_reader" | "out_reader", uid: "..." }
-        // Si no viene, caerá al 'source' (mejor que venga en payload).
-        if (typeof data === "string") return { type: "nfc", reader: source, uid: data };
-        const uid = data?.uid ?? null;
-        const reader = data?.reader || source; // <<-- usa reader del payload
-        const batchType = data?.batch_type_id || null;
-        return { type: "nfc", reader, uid, batchType };
+        if (typeof data === "string") {
+            return { type: "nfc", reader: source, uid: data };
+        }
+        const reader = data?.reader ?? source;
+
+        const batchType =
+            data?.batchType ?? (data?.batch_type_id ?? null);
+
+        return {
+            type: data?.type || "nfc",
+            reader,
+            ...data,
+            batchType,
+        };
     };
 
     const seenReaderOnceRef = useRef({});   // ignora primer evento por lector
@@ -43,9 +50,11 @@ export function usePn532Hybrid(
     };
 
     const maybeFire = (evt) => {
+
         const readerKey = evt.reader || "default";
 
         setUid((prev) => (prev !== evt.uid ? evt.uid : prev));
+        console.log('eve', evt);
         setLast(evt);
 
         if (!armedRef.current) return;
@@ -83,6 +92,7 @@ export function usePn532Hybrid(
                 const j = await r.json().catch(() => ({}));
                 if (cancelled) return;
                 const evt = normalize(j, "poll:init");
+                console.log('evento', evt)
                 setUid(evt.uid ?? null);
                 setLast(evt);
                 // No “contamines” un lector real con "poll:init", solo limpia global
@@ -104,6 +114,7 @@ export function usePn532Hybrid(
             try {
                 const data = JSON.parse(ev.data);
                 const evt = normalize(data, "sse");
+                console.log('event', evt);
                 maybeFire(evt);
             } catch { }
         };

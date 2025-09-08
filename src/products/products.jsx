@@ -20,6 +20,8 @@ import axios from "axios";
 import BannerFeedback from "../components/BannerFeedback";
 
 function Products() {
+  const API = process.env.REACT_APP_API_URL;
+
   const [scanState, setScanState] = useState({ status: "idle", product: null });
   const [operation, setOperation] = useState("entrada");
   const [showToast, setShowToast] = useState(false);
@@ -62,7 +64,7 @@ function Products() {
 
   const handleGetCategories = () => {
     axios
-      .get("http://localhost:5000/categories/get-categories")
+      .get(`${API}/categories/get-categories`)
       .then((response) => {
         setCategories(response.data.data);
       })
@@ -82,7 +84,10 @@ function Products() {
     };
 
     axios
-      .post("http://localhost:5000/products/create-product", newProduct)
+      .post(
+        `${API}/products/create-product`,
+        newProduct
+      )
       .then((response) => {
         setDetails("Producto creado con exito");
         setVariant("success");
@@ -99,7 +104,7 @@ function Products() {
 
   const handleGetProducts = () => {
     axios
-      .get("http://localhost:5000/products/get-products")
+      .get(`${API}/products/get-products`)
       .then((response) => {
         setProducts(response.data.data);
       })
@@ -186,7 +191,7 @@ function Products() {
                         }
                       >
                         <td>
-                          <Badge bg="secondary">{item.sku}</Badge>
+                          <Badge bg="primary">{item.sku}</Badge>
                         </td>
                         <td>
                           <strong>{item.product_name}</strong>

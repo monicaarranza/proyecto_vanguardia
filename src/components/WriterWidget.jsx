@@ -6,7 +6,7 @@ import { Wifi } from "react-bootstrap-icons";
 
 export default function Pn532Widget({
   onScan,
-  baseUrl = "http://localhost:5000",
+  baseUrl = process.env.REACT_APP_API_URL,
   tag,
 }) {
   // Asegura referencia estable a onScan
@@ -15,7 +15,7 @@ export default function Pn532Widget({
   const { uid, last, connected, error } = usePn532Hybrid(handleScan, {
     baseUrl,
     pollMs: 500,
-    suppressInitial: true, // << clave para no disparar con el último UID al volver
+    suppressInitial: true,
   });
 
   const isPresent = last?.present === true;

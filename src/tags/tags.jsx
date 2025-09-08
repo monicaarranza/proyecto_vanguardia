@@ -21,6 +21,8 @@ import BannerFeedback from "../components/BannerFeedback";
 import WriterWidget from "../components/WriterWidget";
 
 function Tags() {
+  const API = process.env.REACT_APP_API_URL;
+
   const [scanState, setScanState] = useState({ status: "idle", product: null });
   const [operation, setOperation] = useState("entrada");
   const [showToast, setShowToast] = useState(false);
@@ -54,7 +56,7 @@ function Tags() {
 
   const handleGetProducts = () => {
     axios
-      .get("http://localhost:5000/products/get-products")
+      .get(`${API}/products/get-products`)
       .then((response) => {
         setProducts(response.data.data);
       })
@@ -75,7 +77,7 @@ function Tags() {
     console.log(newTag);
 
     axios
-      .post("http://localhost:5000/tags/create-tag", newTag)
+      .post(`${API}/tags/create-tag`, newTag)
       .then((response) => {
         setDetails(response.data.details);
         setVariant("success");
@@ -97,7 +99,7 @@ function Tags() {
 
   const handleBatchTypes = () => {
     axios
-      .get("http://localhost:5000/products/get-batch-types")
+      .get(`${API}/products/get-batch-types`)
       .then((response) => {
         setBatchTypes(response.data.data);
         console.log(response.data.data);
@@ -111,7 +113,7 @@ function Tags() {
 
   const handleGetTags = () => {
     axios
-      .get("http://localhost:5000/tags/get-tags")
+      .get(`${API}/tags/get-tags`)
       .then((response) => {
         setTags(response.data.data);
         console.log(response.data.data);
@@ -128,7 +130,7 @@ function Tags() {
     setUid(tag.uid);
 
     axios
-      .post("http://localhost:5000/tags/get-tag", { uid: tag.uid })
+      .post(`${API}/tags/get-tag`, { uid: tag.uid })
       .then((response) => {
         if (!response.data.data) {
           setShowCreateTag(true);
@@ -252,7 +254,7 @@ function Tags() {
                           }
                         >
                           <td>
-                            <Badge bg="secondary">{item.uid}</Badge>
+                            <Badge bg="primary">{item.uid}</Badge>
                           </td>
 
                           <td>
@@ -261,9 +263,7 @@ function Tags() {
                                 String(p.product_id) === String(item.product_id)
                             )?.product_name ?? "—"}
                           </td>
-                          <td>
-                            {item.product_quantity}
-                          </td>
+                          <td>{item.product_quantity}</td>
                           <td>
                             {new Date(item.created_at).toLocaleDateString()}
                           </td>
@@ -337,27 +337,6 @@ function Tags() {
                 value={quantity}
               />
             </Form.Group>
-
-            {productId && (
-              <Form.Group className="mb-3">
-                <Form.Label>
-                  <strong>Tipo de Lote:</strong>
-                </Form.Label>
-                <Form.Select
-                  name="category_id"
-                  required
-                  onChange={handleSelectBatchType}
-                  value={batchTypeId}
-                >
-                  <option value="">Seleccione tipo de lote</option>
-                  {filteredBatchTypes.map((b) => (
-                    <option key={b.batch_tpe_id} value={b.batch_type_id}>
-                      {b.batch_type_name}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Form.Group>
-            )}
 
             <div className="d-flex justify-content-end mt-3">
               <Button onClick={handleCreateTag} variant="success">

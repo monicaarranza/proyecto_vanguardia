@@ -7,6 +7,8 @@ import BatchTypes from "./batchTypes/batchTypes";
 import Home from "./home/home";
 import Login from "./login/login";
 import Users from "./users/users";
+import Items from "./items/items";
+import ProductPassport from "./productPassport/productPassword";
 
 function App() {
     return (
@@ -19,6 +21,8 @@ function App() {
                 <Route path="/tags" element={<Tags />} />
                 <Route path="/batch-types" element={<BatchTypes />} />
                 <Route path="/users" element={<Users/>}/>
+                <Route path="/items" element={<Items/>}/>
+                <Route path="/product-passport/:uid" element={<ProductPassport/>}/>
             </Routes>
         </BrowserRouter>
     );

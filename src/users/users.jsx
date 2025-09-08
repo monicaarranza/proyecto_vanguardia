@@ -54,7 +54,7 @@ function Users() {
 
   const handleGetLocations = () => {
     axios
-      .get("http://localhost:5000/locations/get-locations")
+      .get("${process.env.REACT_APP_API_URL}/locations/get-locations")
       .then((response) => {
         console.log(response.data.data);
         setLocations(response.data.data);
@@ -68,7 +68,7 @@ function Users() {
 
   const handleGetUsers = () => {
     axios
-      .get("http://localhost:5000/users/get-users")
+      .get("${process.env.REACT_APP_API_URL}/users/get-users")
       .then((response) => {
         console.log(response.data.data);
         setUsers(response.data.data);
@@ -92,7 +92,7 @@ function Users() {
     };
 
     axios
-      .post("http://localhost:5000/users/create-user", { newUser: newUser })
+      .post("${process.env.REACT_APP_API_URL}/users/create-user", { newUser: newUser })
       .then((response) => {
         setDetails(response.data.details);
         setVariant("success");
