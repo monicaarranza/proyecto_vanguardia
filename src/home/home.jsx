@@ -89,8 +89,8 @@ export default function Home() {
                   <div className="icon-wrap">{m.icon}</div>
                   <div className="pill" />
                 </div>
-                <Card.Title className="mt-2 text-white">{m.title}</Card.Title>
-                <Card.Text className="text-white small mb-3">
+                <Card.Title className="mt-2 text-muted">{m.title}</Card.Title>
+                <Card.Text className="text-muted small mb-3">
                   {m.desc}
                 </Card.Text>
               </Card.Body>

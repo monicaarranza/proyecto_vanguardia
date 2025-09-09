@@ -52,6 +52,8 @@ export default function ProductPassport({ timeline = [] }) {
 
   const [item, setItem] = useState(null);
 
+  const [locations, setLocations] = useState([]);
+
   const lineageKey = (n, i) => n.nfc_uid ?? n.item_id ?? n.href ?? i;
   const lineageHref = (n) =>
     n.href ?? (n.nfc_uid ? `/product-passport/${n.nfc_uid}` : "#");
@@ -79,9 +81,24 @@ export default function ProductPassport({ timeline = [] }) {
       });
   };
 
+  const getLocationName = (id) =>
+  locations.find(l => String(l.location_id) === String(id))?.location_name ?? null;
+
+  const handleGetLocations = () => {
+    axios
+      .get(`${process.env.REACT_APP_API_URL}/locations/get-locations`)
+      .then((response) => {
+        console.log(response.data.data);
+        setLocations(response.data.data);
+      })
+      .catch((error) => {
+      });
+  };
+
   useEffect(() => {
     if (!uid) return;
     handleGetProductData(uid);
+    handleGetLocations();
   }, [uid]);
 
   return (
@@ -218,108 +235,94 @@ export default function ProductPassport({ timeline = [] }) {
           </Card>
         )}
 
-        <Card className="mb-3 card-soft">
-          <Card.Header className="fw-semibold bg-white border-0 pb-0 pt-3 px-3">
-            <span className="section-title">Historial</span>
-          </Card.Header>
-          <Card.Body className="mov-wrap">
-            {(!item?.movements || item.movements.length === 0) && (
-              <div className="text-muted text-center py-3">
-                Sin eventos registrados.
-              </div>
-            )}
+        {/* Transparencia (on-chain) con mismo look de Historial */}
+{Array.isArray(item?.movements_chain) && item.movements_chain.length > 0 && (
+  <Card className="mb-3 card-soft">
+    <Card.Header className="fw-semibold bg-white border-0 pb-0 pt-3 px-3">
+      <span className="section-title">Historial</span>
+    </Card.Header>
 
-            {(item?.movements || []).slice(0, 20).map((ev) => {
-              const mt = (ev.movement_type || ev.direction || "").toLowerCase();
-              const isIn = [
-                "inbound",
-                "in",
-                "receive",
-                "move_in",
-                "split_in",
-              ].includes(mt);
-              const isOut = [
-                "outbound",
-                "out",
-                "ship",
-                "move_out",
-                "split_out",
-                "consume",
-              ].includes(mt);
+    <Card.Body className="mov-wrap">
+      {/* Mapea { id, name } -> { [id]: name } una sola vez */}
+      {(() => {
+        const locationsById = Object.fromEntries(
+          (locations || []).map(l => [Number(l.id), l.name])
+        );
 
-              const Icon = isIn
-                ? BsBoxArrowDown
-                : isOut
-                ? BsBoxArrowRight
-                : BsQuestionCircle;
+        return (item.movements_chain || [])
+          .slice()
+          .sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0))
+          .map((ev) => {
+            const mt = String(ev.movement_type ?? "").toLowerCase();
+            const isIn = mt === "1" || ["inbound", "in", "receive", "move_in", "split_in"].includes(mt);
+            const isOut = mt === "2" || ["outbound", "out", "ship", "move_out", "split_out", "consume"].includes(mt);
 
-              const iconCls = isIn
-                ? "mov-icon mov-in"
-                : isOut
-                ? "mov-icon mov-out"
-                : "mov-icon mov-other";
-              const label = isIn
-                ? "Entrada"
-                : isOut
-                ? "Salida"
-                : ev.movement_type || "Evento";
-              const tone = isIn
-                ? "text-success"
-                : isOut
-                ? "text-danger"
-                : "text-secondary";
+            const Icon = isIn ? BsBoxArrowDown : isOut ? BsBoxArrowRight : BsQuestionCircle;
+            const iconCls = isIn ? "mov-icon mov-in" : isOut ? "mov-icon mov-out" : "mov-icon mov-other";
+            const label = isIn ? "Entrada" : isOut ? "Salida" : "Movimiento";
 
-              return (
-                <div key={ev.event_id} className="mov-card mb-2">
-                  <div className="d-flex align-items-center justify-content-between">
-                    <div className="d-flex align-items-center gap-2">
-                      <div className={iconCls}>
-                        <Icon size={16} />
+            const when =
+              ev.at_iso ? new Date(ev.at_iso) :
+              ev.ts ? new Date((Number(ev.ts) || 0) * 1000) :
+              null;
+
+            const locationName = getLocationName(ev.location_id);
+
+
+            const tone = isIn ? "text-success" : isOut ? "text-danger" : "text-secondary";
+
+            const txShort = ev.tx_hash ? `${ev.tx_hash.slice(0, 10)}…${ev.tx_hash.slice(-8)}` : null;
+
+            return (
+              <div key={ev.tx_hash || `${ev.ts}-${label}`} className="mov-card mb-2">
+                <div className="d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-2">
+                    <div className={iconCls}>
+                      <Icon size={16} />
+                    </div>
+
+                    <div>
+                      <div className={`mov-title ${tone}`}>{label}</div>
+
+                      <div className="mov-sub">
+                        {locationName !== "—" ? <>Ubicación: {locationName}</> : null}
+                        {typeof ev.quantity === "number" ? <> · Cant.: {ev.quantity}</> : null}
+                        {ev.verified === true && <> · <span className="text-success">✓ Verificado</span></>}
+                        {ev.verified === false && <> · <span className="text-danger">⚠ No coincide</span></>}
                       </div>
-                      <div>
-                        <div className={`mov-title ${tone}`}>{label}</div>
-                        <div className="mov-sub">
-                          {ev.location_name ? (
-                            <>Ubicación: {ev.location_name}</>
-                          ) : null}
-                          {ev.meta?.note ? <> · {ev.meta.note}</> : null}
-                        </div>
-                        <div className="mov-sub">Cantidad: {ev.quantity}</div>
+
+                      <div className="mov-sub">
+                        {txShort ? <>tx: <code>{txShort}</code></> : null}
+                        {ev.metadata_uri ? (
+                          <>
+                            {" "}|{" "}
+                            <a href={ev.metadata_uri} target="_blank" rel="noreferrer">
+                              snapshot
+                            </a>
+                          </>
+                        ) : null}
                       </div>
                     </div>
-                    <div className="mov-time">{fmt(ev.created_at)}</div>
+                  </div>
+
+                  <div className="mov-time">
+                    {when ? fmt(when) : "—"}
                   </div>
                 </div>
-              );
-            })}
-
-            {(item?.movements?.length || 0) > 20 && (
-              <div className="text-center pt-1">
-                <Button size="sm" variant="link">
-                  Ver más
-                </Button>
               </div>
-            )}
-          </Card.Body>
-        </Card>
+            );
+          });
+      })()}
 
-        {/* Documentos / Certificados */}
-        {item?.movements_chain && item.movements_chain.length > 0 && (
-          <Card className="mb-3 card-soft">
-            <Card.Header className="fw-semibold bg-white border-0 pb-0 pt-3 px-3">
-              <span className="section-title">Verifiacion</span>
-            </Card.Header>
-            <ListGroup variant="flush">
-              {item.movements_chain.map((d) => (
-                <ListGroup.Item key={d.url} className="border-0">
-                  <a href={d.url} target="_blank" rel="noreferrer">
-                    {d.tx_hash}
-                  </a>
-                </ListGroup.Item>
-              ))}
-            </ListGroup>
-          </Card>
-        )}
+      {(item.movements_chain?.length || 0) > 20 && (
+        <div className="text-center pt-1">
+          <Button size="sm" variant="link">Ver más</Button>
+        </div>
+      )}
+    </Card.Body>
+  </Card>
+)}
+
 
         {/* Avisos */}
         <Row className="mt-2">
