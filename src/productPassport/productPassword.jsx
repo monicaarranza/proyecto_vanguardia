@@ -12,13 +12,21 @@ import {
   Tooltip,
 } from "react-bootstrap";
 import {
-  BsShieldCheck,
-  BsShare,
-  BsExclamationTriangle,
   BsBoxArrowDown,
   BsBoxArrowRight,
+  BsArrowLeftRight,
+  BsScissors,
+  BsTruck,
+  BsDownload,
+  BsTrash,
+  BsGear,
+  BsClipboardCheck,
+  BsClipboardX,
+  BsArrowReturnLeft,
   BsQuestionCircle,
+  BsShieldCheck,
 } from "react-icons/bs";
+
 import { useParams, useSearchParams } from "react-router-dom";
 import "./productPassport.css";
 import {
@@ -27,6 +35,9 @@ import {
   BsClockHistory,
   BsFileEarmarkText,
 } from "react-icons/bs";
+import { FaCodeBranch } from "react-icons/fa";
+import { PiArrowsSplitBold, PiArrowsSplitLight } from "react-icons/pi";
+import TxDetailsModal from "../components/TxDetailsModal.jsx"
 
 const statusVariant = (s) => {
   switch ((s || "").toUpperCase()) {
@@ -43,6 +54,162 @@ const statusVariant = (s) => {
   }
 };
 
+const NUM2CANON = {
+  1: "inbound",
+  2: "outbound",
+  3: "move_in",
+  4: "move_out",
+  5: "split_in",
+  6: "split_out",
+  7: "consume",
+  8: "transfer",
+  9: "receive",
+  10: "ship",
+  11: "return_in",
+  12: "return_out",
+  13: "adjust",
+  14: "audit",
+  15: "qc_pass",
+  16: "qc_fail",
+};
+
+const normalizeType = (t) => {
+  const s = String(t ?? "")
+    .trim()
+    .toLowerCase();
+  if (!s) return "other";
+  if (/^\d+$/.test(s)) return NUM2CANON[Number(s)] || "other";
+  if (["in", "inbound", "receive"].includes(s)) return "inbound";
+  if (["out", "outbound", "ship"].includes(s)) return "outbound";
+  return s; // move_in, move_out, split_in, split_out, consume, transfer, etc.
+};
+
+export function movementTypeInfo(ev) {
+  const t = normalizeType(ev?.movement_type ?? ev?.direction);
+
+  switch (t) {
+    case "inbound":
+      return {
+        label: "Entrada",
+        Icon: BsBoxArrowDown,
+        iconCls: "mov-icon mov-in",
+        tone: "text-success",
+      };
+    case "outbound":
+      return {
+        label: "Salida",
+        Icon: BsBoxArrowRight,
+        iconCls: "mov-icon mov-out",
+        tone: "text-danger",
+      };
+    case "move_in":
+      return {
+        label: "Movimiento (entrada)",
+        Icon: BsArrowLeftRight,
+        iconCls: "mov-icon mov-move",
+        tone: "text-primary",
+      };
+    case "move_out":
+      return {
+        label: "Movimiento (salida)",
+        Icon: BsArrowLeftRight,
+        iconCls: "mov-icon mov-move",
+        tone: "text-primary",
+      };
+    case "split_in":
+      return {
+        label: "División",
+        Icon: PiArrowsSplitBold,
+        iconCls: "mov-icon mov-split",
+        tone: "text-info",
+      };
+    case "split_out":
+      return {
+        label: "División ",
+        Icon: PiArrowsSplitBold,
+        iconCls: "mov-icon mov-split",
+        tone: "text-info",
+      };
+    case "receive":
+      return {
+        label: "Recepción",
+        Icon: BsDownload,
+        iconCls: "mov-icon mov-receive",
+        tone: "text-success",
+      };
+    case "ship":
+      return {
+        label: "Envío",
+        Icon: BsTruck,
+        iconCls: "mov-icon mov-ship",
+        tone: "text-danger",
+      };
+    case "transfer":
+      return {
+        label: "Transferencia",
+        Icon: BsArrowLeftRight,
+        iconCls: "mov-icon mov-transfer",
+        tone: "text-primary",
+      };
+    case "consume":
+      return {
+        label: "Consumo",
+        Icon: BsTrash,
+        iconCls: "mov-icon mov-consume",
+        tone: "text-secondary",
+      };
+    case "adjust":
+      return {
+        label: "Ajuste",
+        Icon: BsGear,
+        iconCls: "mov-icon mov-adjust",
+        tone: "text-warning",
+      };
+    case "audit":
+      return {
+        label: "Auditoría",
+        Icon: BsClipboardCheck,
+        iconCls: "mov-icon mov-audit",
+        tone: "text-muted",
+      };
+    case "return_in":
+      return {
+        label: "Devolución (entrada)",
+        Icon: BsArrowReturnLeft,
+        iconCls: "mov-icon mov-return",
+        tone: "text-success",
+      };
+    case "return_out":
+      return {
+        label: "Devolución (salida)",
+        Icon: BsArrowReturnLeft,
+        iconCls: "mov-icon mov-return",
+        tone: "text-danger",
+      };
+    case "qc_pass":
+      return {
+        label: "QC Aprobado",
+        Icon: BsClipboardCheck,
+        iconCls: "mov-icon mov-qc",
+        tone: "text-success",
+      };
+    case "qc_fail":
+      return {
+        label: "QC Rechazado",
+        Icon: BsClipboardX,
+        iconCls: "mov-icon mov-qc",
+        tone: "text-danger",
+      };
+    default:
+      return {
+        label: "Movimiento",
+        Icon: BsQuestionCircle,
+        iconCls: "mov-icon mov-other",
+        tone: "text-secondary",
+      };
+  }
+}
+
 const fmt = (d) => new Date(d).toLocaleString();
 
 export default function ProductPassport({ timeline = [] }) {
@@ -53,6 +220,10 @@ export default function ProductPassport({ timeline = [] }) {
   const [item, setItem] = useState(null);
 
   const [locations, setLocations] = useState([]);
+
+  const [txDetails, setTxDetails] = useState(null);
+  const [txModalOpen, setTxModalOpen] = useState(false);
+  const [txLoading, setTxLoading] = useState(false);
 
   const lineageKey = (n, i) => n.nfc_uid ?? n.item_id ?? n.href ?? i;
   const lineageHref = (n) =>
@@ -81,8 +252,23 @@ export default function ProductPassport({ timeline = [] }) {
       });
   };
 
+  const handleGetTransaction = (hash) => {
+    console.log(hash);
+    axios
+      .post(`${API}/products/get-transaction`, { hash: hash })
+      .then((response) => {
+        setTxDetails(response.data.data);
+        setTxModalOpen(true);
+        console.log(response);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  };
+
   const getLocationName = (id) =>
-  locations.find(l => String(l.location_id) === String(id))?.location_name ?? null;
+    locations.find((l) => String(l.location_id) === String(id))
+      ?.location_name ?? null;
 
   const handleGetLocations = () => {
     axios
@@ -91,8 +277,7 @@ export default function ProductPassport({ timeline = [] }) {
         console.log(response.data.data);
         setLocations(response.data.data);
       })
-      .catch((error) => {
-      });
+      .catch((error) => {});
   };
 
   useEffect(() => {
@@ -218,7 +403,9 @@ export default function ProductPassport({ timeline = [] }) {
 
                         <div className="lineage-card flex-grow-1">
                           <div className="d-flex justify-content-between align-items-center gap-2">
-                            <a href={href} className="lineage-id">{uid}</a>
+                            <a href={href} className="lineage-id">
+                              {uid}
+                            </a>
                             <small className="lineage-ts">{ts}</small>
                           </div>
                         </div>
@@ -235,102 +422,204 @@ export default function ProductPassport({ timeline = [] }) {
           </Card>
         )}
 
-        {/* Transparencia (on-chain) con mismo look de Historial */}
-{Array.isArray(item?.movements_chain) && item.movements_chain.length > 0 && (
-  <Card className="mb-3 card-soft">
-    <Card.Header className="fw-semibold bg-white border-0 pb-0 pt-3 px-3">
-      <span className="section-title">Historial</span>
-    </Card.Header>
+        {Array.isArray(item?.movements_chain) &&
+          item.movements_chain.length > 0 && (
+            <Card className="mb-3 card-soft">
+              <Card.Header className="fw-semibold bg-white border-0 pb-0 pt-3 px-3">
+                <span className="section-title">Historial</span>
+              </Card.Header>
 
-    <Card.Body className="mov-wrap">
-      {/* Mapea { id, name } -> { [id]: name } una sola vez */}
-      {(() => {
-        const locationsById = Object.fromEntries(
-          (locations || []).map(l => [Number(l.id), l.name])
-        );
+              <Card.Body className="mov-wrap">
+                {(() => {
+                  // Helpers
+                  const shortUid = (u) =>
+                    u ? `${String(u).slice(0, 6)}…${String(u).slice(-4)}` : "—";
 
-        return (item.movements_chain || [])
-          .slice()
-          .sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0))
-          .map((ev) => {
-            const mt = String(ev.movement_type ?? "").toLowerCase();
-            const isIn = mt === "1" || ["inbound", "in", "receive", "move_in", "split_in"].includes(mt);
-            const isOut = mt === "2" || ["outbound", "out", "ship", "move_out", "split_out", "consume"].includes(mt);
+                  // Mapear lineage por UID para mostrar info en split (item_id, etc.)
+                  const lineageIndex = Object.fromEntries(
+                    (item.lineage || []).map((n, i) => [
+                      String(n.nfc_uid || "").toUpperCase(),
+                      { ...n, _pos: i },
+                    ])
+                  );
 
-            const Icon = isIn ? BsBoxArrowDown : isOut ? BsBoxArrowRight : BsQuestionCircle;
-            const iconCls = isIn ? "mov-icon mov-in" : isOut ? "mov-icon mov-out" : "mov-icon mov-other";
-            const label = isIn ? "Entrada" : isOut ? "Salida" : "Movimiento";
+                  // 1) Base: orden cronológico por ts
+                  const base = (item.movements_chain || [])
+                    .slice()
+                    .sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0));
 
-            const when =
-              ev.at_iso ? new Date(ev.at_iso) :
-              ev.ts ? new Date((Number(ev.ts) || 0) * 1000) :
-              null;
+                  // 2) Inyectar marcadores de división cuando cambia el source_uid
+                  const withSplits = [];
+                  let prevUid = base.length ? base[0].source_uid || null : null;
 
-            const locationName = getLocationName(ev.location_id);
+                  for (let i = 0; i < base.length; i++) {
+                    const ev = base[i];
 
+                    const uid = ev.source_uid || null;
 
-            const tone = isIn ? "text-success" : isOut ? "text-danger" : "text-secondary";
+                    if (i > 0 && uid && prevUid && uid !== prevUid) {
+                      const from = lineageIndex[prevUid] || {};
+                      const to = lineageIndex[uid] || {};
+                      withSplits.push({
+                        kind: "split",
+                        at_ts: ev.ts, // usamos el ts del primer evento del nuevo UID
+                        from_uid: prevUid,
+                        to_uid: uid,
+                        from_item_id: from.item_id,
+                        to_item_id: to.item_id,
+                      });
+                    }
 
-            const txShort = ev.tx_hash ? `${ev.tx_hash.slice(0, 10)}…${ev.tx_hash.slice(-8)}` : null;
+                    withSplits.push(ev);
+                    if (uid) prevUid = uid;
+                  }
 
-            return (
-              <div key={ev.tx_hash || `${ev.ts}-${label}`} className="mov-card mb-2">
-                <div className="d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <div className={iconCls}>
-                      <Icon size={16} />
-                    </div>
+                  return withSplits.map((ev, idx) => {
+                    if (ev.kind === "split") {
+                      const when = ev.at_ts
+                        ? new Date(Number(ev.at_ts) * 1000)
+                        : null;
+                      return (
+                        <div
+                          key={`split-${idx}`}
+                          className="mov-card split-card my-3"
+                        >
+                          <div className="d-flex align-items-center justify-content-between">
+                            <div className="d-flex align-items-center gap-2">
+                              <div className="mov-icon mov-split">
+                                <PiArrowsSplitBold size={16} />
+                              </div>
+                              <div>
+                                <div className="mov-title text-primary">
+                                  División de lote
+                                </div>
+                                <div className="mov-sub">
+                                  {ev.from_item_id
+                                    ? `#${ev.from_item_id}`
+                                    : shortUid(ev.from_uid)}{" "}
+                                  <span className="mx-1">→</span>{" "}
+                                  {ev.to_item_id
+                                    ? `#${ev.to_item_id}`
+                                    : shortUid(ev.to_uid)}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="mov-time">
+                              {when ? fmt(when) : "—"}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
 
-                    <div>
-                      <div className={`mov-title ${tone}`}>{label}</div>
+                    const when = ev.at_iso
+                      ? new Date(ev.at_iso)
+                      : ev.ts
+                      ? new Date((Number(ev.ts) || 0) * 1000)
+                      : null;
 
-                      <div className="mov-sub">
-                        {locationName !== "—" ? <>Ubicación: {locationName}</> : null}
-                        {typeof ev.quantity === "number" ? <> · Cant.: {ev.quantity}</> : null}
-                        {ev.verified === true && <> · <span className="text-success">✓ Verificado</span></>}
-                        {ev.verified === false && <> · <span className="text-danger">⚠ No coincide</span></>}
+                    // Si usas getLocationName, mantenlo. Si no, puedes mapear directo:
+                    const locationName = getLocationName
+                      ? getLocationName(ev.location_id)
+                      : "—";
+
+                    const txShort = ev.tx_hash
+                      ? `${ev.tx_hash.slice(0, 10)}…${ev.tx_hash.slice(-8)}`
+                      : null;
+
+                    const { label, Icon, iconCls, tone } = movementTypeInfo(ev);
+
+                    return (
+                      <div
+                        key={ev.tx_hash || `${ev.ts}-${idx}`}
+                        className="mov-card mb-2"
+                        onClick={() => handleGetTransaction(ev?.tx_hash)}
+                      >
+                        <div className="d-flex align-items-center justify-content-between">
+                          <div className="d-flex align-items-center gap-2">
+                            <div className={iconCls}>
+                              <Icon size={16} />
+                            </div>
+
+                            <div>
+                              <div className={`mov-title ${tone}`}>{label}</div>
+
+                              <div className="mov-sub">
+                                {locationName && locationName !== "—" ? (
+                                  <>Ubicación: {locationName}</>
+                                ) : null}
+                                {typeof ev.quantity === "number" ? (
+                                  <> · Cant.: {ev.quantity}</>
+                                ) : null}
+                                {ev.verified === true && (
+                                  <>
+                                    {" "}
+                                    ·{" "}
+                                    <span className="text-success">
+                                      ✓ Verificado
+                                    </span>
+                                  </>
+                                )}
+                                {ev.verified === false && (
+                                  <>
+                                    {" "}
+                                    ·{" "}
+                                    <span className="text-danger">
+                                      ⚠ No coincide
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+
+                              <div className="mov-sub">
+                                {/* Muestra de qué UID proviene este evento si quieres transparencia */}
+                                {ev.source_uid ? (
+                                  <>
+                                    UID: <code>{shortUid(ev.source_uid)}</code>{" "}
+                                    ·{" "}
+                                  </>
+                                ) : null}
+                                {txShort ? (
+                                  <>
+                                    tx: <code>{txShort}</code>
+                                  </>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mov-time">
+                            {when ? fmt(when) : "—"}
+                          </div>
+                        </div>
                       </div>
+                    );
+                  });
+                })()}
 
-                      <div className="mov-sub">
-                        {txShort ? <>tx: <code>{txShort}</code></> : null}
-                        {ev.metadata_uri ? (
-                          <>
-                            {" "}|{" "}
-                            <a href={ev.metadata_uri} target="_blank" rel="noreferrer">
-                              snapshot
-                            </a>
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
+                {(item.movements_chain?.length || 0) > 20 && (
+                  <div className="text-center pt-1">
+                    <Button size="sm" variant="link">
+                      Ver más
+                    </Button>
                   </div>
-
-                  <div className="mov-time">
-                    {when ? fmt(when) : "—"}
-                  </div>
-                </div>
-              </div>
-            );
-          });
-      })()}
-
-      {(item.movements_chain?.length || 0) > 20 && (
-        <div className="text-center pt-1">
-          <Button size="sm" variant="link">Ver más</Button>
-        </div>
-      )}
-    </Card.Body>
-  </Card>
-)}
-
+                )}
+              </Card.Body>
+            </Card>
+          )}
 
         {/* Avisos */}
         <Row className="mt-2">
           <Col>
-            <small className="text-muted d-block text-center">
-            </small>
+            <small className="text-muted d-block text-center"></small>
           </Col>
         </Row>
+        <TxDetailsModal
+          show={txModalOpen}
+          onHide={() => setTxModalOpen(false)}
+          data={txDetails}
+          loading={txLoading}
+        />
       </Container>
     </>
   );
